@@ -1,0 +1,7 @@
+﻿diff --git a/Utils.Torch/VRageUtils.cs b/Utils.Torch/VRageUtils.cs
+index 83e6319..5da04ef 100644
+--- a/Utils.Torch/VRageUtils.cs
++++ b/Utils.Torch/VRageUtils.cs
+@@ -186 +186 @@ namespace Utils.Torch
+-            self.SendAddGps(identityId, ref gps, gps.EntityId, playSound);
++            self.SendAddGpsRequest(identityId, ref gps, gps.EntityId, playSound);

@@ -1,0 +1,17 @@
+﻿{
+    "Enabled":  false,
+    "DryRun":  true,
+    "QueueEndpoint":  "https://awlgaming.net/wp-json/awl/v1/tebex/deliveries",
+    "ApiKey":  "",
+    "Secret":  "",
+    "ServerSlug":  "space-engineers",
+    "ServerName":  "AWL Space Engineers Shared Economy",
+    "PollSeconds":  30,
+    "RequestTimeoutSeconds":  15,
+    "BatchSize":  8,
+    "MaxAmount":  5000000,
+    "RunStartupProbe":  false,
+    "RunRoundTripProbe":  false,
+    "ProbeSteam64":  "",
+    "ProbeId":  ""
+}
