@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="Newtonsoft.Json"><HintPath>..\TorchBinaries\Newtonsoft.Json.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Torch"><HintPath>..\TorchBinaries\Torch.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Torch.API"><HintPath>..\TorchBinaries\Torch.API.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Sandbox.Common"><HintPath>..\GameBinaries\Sandbox.Common.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Sandbox.Game"><HintPath>..\GameBinaries\Sandbox.Game.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="VRage"><HintPath>..\GameBinaries\VRage.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="VRage.Game"><HintPath>..\GameBinaries\VRage.Game.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="VRage.Library"><HintPath>..\GameBinaries\VRage.Library.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="VRage.Math"><HintPath>..\GameBinaries\VRage.Math.dll</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\AWLTebexDelivery\ModelsAndConfig.cs" Link="ModelsAndConfig.cs" />
+    <Compile Include="..\AWLTebexDelivery\DeliveryJournal.cs" Link="DeliveryJournal.cs" />
+    <Compile Include="..\AWLTebexDelivery\TebexApiClient.cs" Link="TebexApiClient.cs" />
+    <Compile Include="..\AWLTebexDelivery\SpaceEngineersDeliveryProcessor.cs" Link="SpaceEngineersDeliveryProcessor.cs" />
+  </ItemGroup>
+</Project>
