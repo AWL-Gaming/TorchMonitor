@@ -70,11 +70,12 @@ namespace AWLTebexDelivery
 
         public static TebexDeliveryConfig Load(string assemblyDirectory)
         {
+            var credentials = LoadCredentialOverlay();
             var config = new TebexDeliveryConfig
             {
                 Endpoint = Read("SE_TEBEX_DELIVERY_ENDPOINT", "https://awlgaming.net/wp-json/awl/v1/tebex/deliveries"),
-                ApiKey = Read("AWL_API_KEY", string.Empty),
-                Secret = Read("AWL_SECRET", string.Empty),
+                ApiKey = Read("AWL_API_KEY", credentials.ApiKey),
+                Secret = Read("AWL_SECRET", credentials.Secret),
                 ServerSlug = Read("SE_TEBEX_SERVER_SLUG", DeliveryContract.ServerSlug),
                 ServerName = Read("SE_TEBEX_SERVER_NAME", DeliveryContract.ServerName),
                 JournalPath = Read("SE_TEBEX_JOURNAL_PATH", Path.Combine(assemblyDirectory, "AWLTebexDelivery.journal.json")),
@@ -112,6 +113,71 @@ namespace AWLTebexDelivery
                 throw new InvalidDataException("AWL_API_KEY and AWL_SECRET are required when SE Tebex delivery is enabled.");
         }
 
+        private const string DefaultCredentialFile = @"C:\AWL\Tebex\SecureRuntime\space-engineers-tebex.env";
+
+        private static CredentialOverlay LoadCredentialOverlay()
+        {
+            var configuredPath = Environment.GetEnvironmentVariable("SE_TEBEX_CREDENTIAL_FILE");
+            var explicitPath = !string.IsNullOrWhiteSpace(configuredPath);
+            var path = explicitPath
+                ? configuredPath.Trim()
+                : Path.DirectorySeparatorChar == '\\' ? DefaultCredentialFile : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(path))
+                return new CredentialOverlay();
+
+            path = Path.GetFullPath(path);
+            if (!File.Exists(path))
+            {
+                if (explicitPath)
+                    throw new InvalidDataException("SE_TEBEX_CREDENTIAL_FILE does not exist.");
+                return new CredentialOverlay();
+            }
+
+            return ParseCredentialFile(path);
+        }
+
+        internal static CredentialOverlay ParseCredentialFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new InvalidDataException("SE Tebex credential path cannot be empty.");
+
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var sourceLine in File.ReadAllLines(Path.GetFullPath(path)))
+            {
+                var line = (sourceLine ?? string.Empty).Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    continue;
+
+                var separator = line.IndexOf('=');
+                if (separator <= 0)
+                    throw new InvalidDataException("SE Tebex credential file contains a malformed entry.");
+
+                var name = line.Substring(0, separator).Trim();
+                if (!string.Equals(name, "AWL_API_KEY", StringComparison.Ordinal)
+                    && !string.Equals(name, "AWL_SECRET", StringComparison.Ordinal))
+                    throw new InvalidDataException("SE Tebex credential file contains an unsupported key.");
+                if (values.ContainsKey(name))
+                    throw new InvalidDataException("SE Tebex credential file contains a duplicate key.");
+
+                var value = line.Substring(separator + 1).Trim();
+                if (value.Length >= 2
+                    && ((value[0] == '"' && value[value.Length - 1] == '"')
+                        || (value[0] == '\'' && value[value.Length - 1] == '\'')))
+                    value = value.Substring(1, value.Length - 2);
+                if (string.IsNullOrWhiteSpace(value))
+                    throw new InvalidDataException("SE Tebex credential file contains an empty value.");
+
+                values.Add(name, value);
+            }
+
+            string apiKey;
+            string secret;
+            values.TryGetValue("AWL_API_KEY", out apiKey);
+            values.TryGetValue("AWL_SECRET", out secret);
+            return new CredentialOverlay(apiKey, secret);
+        }
+
         private static string Read(string name, string fallback)
         {
             var value = Environment.GetEnvironmentVariable(name);
@@ -144,6 +210,18 @@ namespace AWLTebexDelivery
                 throw new InvalidDataException(name + " is outside the allowed range.");
             return parsed;
         }
+    }
+
+    internal sealed class CredentialOverlay
+    {
+        public CredentialOverlay(string apiKey = null, string secret = null)
+        {
+            ApiKey = apiKey ?? string.Empty;
+            Secret = secret ?? string.Empty;
+        }
+
+        public string ApiKey { get; }
+        public string Secret { get; }
     }
 
     internal sealed class ClaimEnvelope

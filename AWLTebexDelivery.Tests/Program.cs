@@ -11,6 +11,8 @@ namespace AWLTebexDelivery
         {
             TestSteam64Validation();
             TestHmacVector();
+            TestCredentialFileFallbackAndEnvironmentPrecedence();
+            TestCredentialFileRejectsUnsafeEntries();
             TestDeliveryContract();
             TestJournalCrashBlocksReplay();
             TestJournalDeliveredAcknowledgesWithoutReplay();
@@ -32,6 +34,71 @@ namespace AWLTebexDelivery
         {
             var signature = TebexApiClient.Sign(123, "{\"x\":1}", "secret");
             Assert(signature == "e026d9fb244519ab60b34977ea31915edb1040d96ec9a5ef93c1c024b174c1e4", "HMAC signature vector should be stable");
+        }
+
+        private static void TestCredentialFileFallbackAndEnvironmentPrecedence()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "awl-se-tebex-credentials-" + Guid.NewGuid().ToString("N") + ".env");
+            var oldEnabled = Environment.GetEnvironmentVariable("SE_TEBEX_DELIVERY_ENABLED");
+            var oldPath = Environment.GetEnvironmentVariable("SE_TEBEX_CREDENTIAL_FILE");
+            var oldApiKey = Environment.GetEnvironmentVariable("AWL_API_KEY");
+            var oldSecret = Environment.GetEnvironmentVariable("AWL_SECRET");
+            try
+            {
+                File.WriteAllText(path, "# dedicated SE credentials\nAWL_API_KEY=file-key\nAWL_SECRET='file-secret'\n");
+                Environment.SetEnvironmentVariable("SE_TEBEX_DELIVERY_ENABLED", "true");
+                Environment.SetEnvironmentVariable("SE_TEBEX_CREDENTIAL_FILE", path);
+                Environment.SetEnvironmentVariable("AWL_API_KEY", null);
+                Environment.SetEnvironmentVariable("AWL_SECRET", null);
+
+                var fromFile = TebexDeliveryConfig.Load(Path.GetTempPath());
+                Assert(fromFile.Enabled, "credential-file config should remain enabled");
+                Assert(fromFile.ApiKey == "file-key", "credential file should supply AWL_API_KEY");
+                Assert(fromFile.Secret == "file-secret", "credential file should unquote AWL_SECRET");
+
+                Environment.SetEnvironmentVariable("AWL_API_KEY", "env-key");
+                Environment.SetEnvironmentVariable("AWL_SECRET", "env-secret");
+                var fromEnvironment = TebexDeliveryConfig.Load(Path.GetTempPath());
+                Assert(fromEnvironment.ApiKey == "env-key", "environment AWL_API_KEY must override credential file");
+                Assert(fromEnvironment.Secret == "env-secret", "environment AWL_SECRET must override credential file");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("SE_TEBEX_DELIVERY_ENABLED", oldEnabled);
+                Environment.SetEnvironmentVariable("SE_TEBEX_CREDENTIAL_FILE", oldPath);
+                Environment.SetEnvironmentVariable("AWL_API_KEY", oldApiKey);
+                Environment.SetEnvironmentVariable("AWL_SECRET", oldSecret);
+                Cleanup(path);
+            }
+        }
+
+        private static void TestCredentialFileRejectsUnsafeEntries()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "awl-se-tebex-credentials-invalid-" + Guid.NewGuid().ToString("N") + ".env");
+            try
+            {
+                File.WriteAllText(path, "AWL_API_KEY=a\nAWL_SECRET=b\nUNEXPECTED=value\n");
+                AssertThrowsInvalidData(() => TebexDeliveryConfig.ParseCredentialFile(path), "credential file must reject unsupported keys");
+                File.WriteAllText(path, "AWL_API_KEY=a\nAWL_API_KEY=b\nAWL_SECRET=c\n");
+                AssertThrowsInvalidData(() => TebexDeliveryConfig.ParseCredentialFile(path), "credential file must reject duplicate keys");
+                File.WriteAllText(path, "AWL_API_KEY=a\nAWL_SECRET=\n");
+                AssertThrowsInvalidData(() => TebexDeliveryConfig.ParseCredentialFile(path), "credential file must reject empty values");
+            }
+            finally { Cleanup(path); }
+        }
+
+        private static void AssertThrowsInvalidData(Action action, string message)
+        {
+            try
+            {
+                action();
+            }
+            catch (InvalidDataException)
+            {
+                Assert(true, message);
+                return;
+            }
+            Assert(false, message);
         }
 
         private static void TestDeliveryContract()
