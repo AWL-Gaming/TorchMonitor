@@ -1,0 +1,19 @@
+diff --git a/Utils.Torch/VRageUtils.cs b/Utils.Torch/VRageUtils.cs
+index 83e6319..93e66df 100644
+--- a/Utils.Torch/VRageUtils.cs
++++ b/Utils.Torch/VRageUtils.cs
+@@ -1,4 +1,4 @@
+-﻿using System;
++using System;
+ using System.Collections.Generic;
+ using System.Linq;
+ using System.Threading;
+@@ -183,7 +183,7 @@ namespace Utils.Torch
+ 
+         public static void SendAddGps(this MyGpsCollection self, long identityId, MyGps gps, bool playSound)
+         {
+-            self.SendAddGps(identityId, ref gps, gps.EntityId, playSound);
++            self.SendAddGpsRequest(identityId, ref gps, gps.EntityId, playSound);
+         }
+ 
+         public static bool TryGetFactionByPlayerId(this MyFactionCollection self, long playerId, out IMyFaction faction)

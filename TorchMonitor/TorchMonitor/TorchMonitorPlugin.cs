@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Windows.Controls;
 using Intervals;
 using Ipstack;
@@ -14,7 +14,7 @@ using Utils.Torch;
 
 namespace TorchMonitor
 {
-    public class TorchMonitorPlugin : TorchPluginBase, IWpfPlugin
+    public partial class TorchMonitorPlugin : TorchPluginBase, IWpfPlugin
     {
         static readonly ILogger Log = LogManager.GetCurrentClassLogger();
 
@@ -78,6 +78,8 @@ namespace TorchMonitor
                 new NetworkEventProfilerMonitor(Config),
                 new PhysicsProfilerMonitor(Config, Config),
             });
+
+            StartTebexCreditBridge();
         }
 
         void OnGameLoaded()
@@ -92,5 +94,11 @@ namespace TorchMonitor
             _canceller?.Cancel();
             _canceller?.Dispose();
         }
-    }
+
+        public override void Dispose()
+        {
+            StopTebexCreditBridge();
+            base.Dispose();
+        }
+}
 }
