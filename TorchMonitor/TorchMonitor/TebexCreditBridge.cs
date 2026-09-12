@@ -33,9 +33,7 @@ namespace TorchMonitor
         {
             try
             {
-                _tebexStoragePath = Path.Combine(
-                    Path.GetDirectoryName(GetType().Assembly.Location) ?? AppDomain.CurrentDomain.BaseDirectory,
-                    "TebexCreditBridge");
+                _tebexStoragePath = Path.Combine(StoragePath, "TebexCreditBridge");
                 Directory.CreateDirectory(_tebexStoragePath);
                 Directory.CreateDirectory(Path.Combine(_tebexStoragePath, "journal"));
                 var configPath = Path.Combine(_tebexStoragePath, "config.json");
@@ -47,6 +45,7 @@ namespace TorchMonitor
                     return;
                 }
                 _tebexConfig = JsonConvert.DeserializeObject<TebexCreditBridgeConfig>(File.ReadAllText(configPath));
+                LoadTebexCredentials(_tebexConfig);
                 ValidateConfig(_tebexConfig);
                 if (_tebexConfig.RunStartupProbe || _tebexConfig.RunRoundTripProbe)
                 {
@@ -573,6 +572,63 @@ namespace TorchMonitor
             return filtered.Trim();
         }
 
+        private static void LoadTebexCredentials(TebexCreditBridgeConfig config)
+        {
+            if (config == null) return;
+            if (!string.IsNullOrWhiteSpace(config.ApiKey) && !string.IsNullOrWhiteSpace(config.Secret)) return;
+
+            var envelopePath = (config.CredentialEnvelopePath ?? string.Empty).Trim();
+            var privateKeyPath = (config.CredentialPrivateKeyPath ?? string.Empty).Trim();
+            if (envelopePath.Length == 0 && privateKeyPath.Length == 0) return;
+            if (envelopePath.Length == 0 || privateKeyPath.Length == 0)
+                throw new InvalidOperationException("CredentialEnvelopePath and CredentialPrivateKeyPath must be configured together");
+            if (!Path.IsPathRooted(envelopePath) || !Path.IsPathRooted(privateKeyPath))
+                throw new InvalidOperationException("Tebex credential paths must be absolute");
+            if (!File.Exists(envelopePath))
+                throw new InvalidOperationException("Tebex credential envelope file does not exist");
+            if (!File.Exists(privateKeyPath))
+                throw new InvalidOperationException("Tebex credential private key file does not exist");
+
+            byte[] privateBlob = null;
+            byte[] cipher = null;
+            byte[] plaintextBytes = null;
+            try
+            {
+                privateBlob = Convert.FromBase64String(File.ReadAllText(privateKeyPath).Trim());
+                cipher = Convert.FromBase64String(File.ReadAllText(envelopePath).Trim());
+                using (var rsa = new RSACryptoServiceProvider(4096))
+                {
+                    rsa.PersistKeyInCsp = false;
+                    rsa.ImportCspBlob(privateBlob);
+                    plaintextBytes = rsa.Decrypt(cipher, true);
+                }
+
+                var values = JsonConvert.DeserializeObject<Dictionary<string, string>>(Encoding.UTF8.GetString(plaintextBytes));
+                string apiKey;
+                string secret;
+                if (values == null || !values.TryGetValue("AWL_API_KEY", out apiKey) || !values.TryGetValue("AWL_SECRET", out secret) ||
+                    string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(secret))
+                    throw new InvalidOperationException("Tebex credential envelope is missing the required AWL credentials");
+
+                config.ApiKey = apiKey.Trim();
+                config.Secret = secret.Trim();
+            }
+            catch (FormatException error)
+            {
+                throw new InvalidOperationException("Tebex credential envelope or private key is not valid base64", error);
+            }
+            catch (CryptographicException error)
+            {
+                throw new InvalidOperationException("Tebex credential envelope could not be decrypted", error);
+            }
+            finally
+            {
+                if (privateBlob != null) Array.Clear(privateBlob, 0, privateBlob.Length);
+                if (cipher != null) Array.Clear(cipher, 0, cipher.Length);
+                if (plaintextBytes != null) Array.Clear(plaintextBytes, 0, plaintextBytes.Length);
+            }
+        }
+
         private static void ValidateConfig(TebexCreditBridgeConfig config)
         {
             if (config == null) throw new InvalidOperationException("Tebex credit config is invalid");
@@ -600,6 +656,8 @@ namespace TorchMonitor
         public string QueueEndpoint { get; set; } = "https://awlgaming.net/wp-json/awl/v1/tebex/deliveries";
         public string ApiKey { get; set; } = "";
         public string Secret { get; set; } = "";
+        public string CredentialEnvelopePath { get; set; } = "";
+        public string CredentialPrivateKeyPath { get; set; } = "";
         public string ServerSlug { get; set; } = "space-engineers";
         public string ServerName { get; set; } = "AWL Space Engineers Shared Economy";
         public int PollSeconds { get; set; } = 30;
