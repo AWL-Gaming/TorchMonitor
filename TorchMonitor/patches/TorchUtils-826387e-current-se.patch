@@ -1,0 +1,13 @@
+diff --git a/Utils.Torch/VRageUtils.cs b/Utils.Torch/VRageUtils.cs
+index 5abacd6..e4c77ba 100644
+--- a/Utils.Torch/VRageUtils.cs
++++ b/Utils.Torch/VRageUtils.cs
+@@ -1,2 +1,2 @@
+-﻿using System;
++using System;
+ using System.Collections.Generic;
+@@ -185,3 +185,3 @@ namespace Utils.Torch
+         {
+-            self.SendAddGps(identityId, ref gps, gps.EntityId, playSound);
++            self.SendAddGpsRequest(identityId, ref gps, gps.EntityId, playSound);
+         }
