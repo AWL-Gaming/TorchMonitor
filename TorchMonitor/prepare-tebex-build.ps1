@@ -2,8 +2,8 @@ param([switch]$Restore)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $submodule = Join-Path $root 'TorchUtils'
-$patch = Join-Path $PSScriptRoot 'patches\TorchUtils-8d8eadf-current-se.patch'
-$expected = '8d8eadf88e0762585f4a5016aef29ecb8165568b'
+$patch = Join-Path $PSScriptRoot 'patches\TorchUtils-826387e-current-se.patch'
+$expected = '826387ed30d00c350a8c0bf44a59919adbd59e64'
 if (-not (Test-Path $submodule)) { throw 'TorchUtils submodule is missing. Run git submodule update --init first.' }
 $head = (git -C $submodule rev-parse HEAD).Trim()
 if ($head -ne $expected) { throw "Unexpected TorchUtils revision $head; expected $expected." }
